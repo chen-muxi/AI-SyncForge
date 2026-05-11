@@ -67,10 +67,19 @@ pip install -r requirements.txt
 ```
 
 ### 2. 启动 Broker 服务
+#### 方式 A: 直接运行
 ```bash
 python3 server.py
 ```
-服务将启动并在 `http://0.0.0.0:8000` 监听 SSE 连接。
+
+#### 方式 B: Docker 部署 (推荐)
+```bash
+docker-compose up -d
+```
+> [!TIP]
+> Docker 部署模式下，数据库文件将持久化在 `./data` 目录下，并自动加载 `.env` 中的配置。
+
+---
 
 ⚙️ **环境变量配置 (可选)**
 
