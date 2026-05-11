@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 
 SCAN_INTERVAL = 30  # 扫描间隔（秒）
 # 从环境变量获取吹哨人判定阈值（秒），默认为 600 秒（10 分钟）
-WHISTLEBLOWER_TIMEOUT_SECONDS = int(os.getenv("WHISTLEBLOWER_TIMEOUT", 600))
+try:
+    WHISTLEBLOWER_TIMEOUT_SECONDS = int(os.getenv("WHISTLEBLOWER_TIMEOUT", 600))
+except (ValueError, TypeError):
+    logger.warning("Invalid WHISTLEBLOWER_TIMEOUT environment variable, using default 600")
+    WHISTLEBLOWER_TIMEOUT_SECONDS = 600
 
 
 def get_stale_testing_tasks(threshold_seconds: int = WHISTLEBLOWER_TIMEOUT_SECONDS) -> list[dict]:

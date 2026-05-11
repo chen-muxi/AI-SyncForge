@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 
 POLL_TASK_INTERVAL = 3  # poll_task 内部轮询间隔
 # 从环境变量获取物理死守时间，默认为 1200 秒（20 分钟）
-PHYSICAL_DEADLINE = int(os.getenv("PHYSICAL_TIMEOUT", 1200))
+try:
+    PHYSICAL_DEADLINE = int(os.getenv("PHYSICAL_TIMEOUT", 1200))
+except (ValueError, TypeError):
+    logger.warning("Invalid PHYSICAL_TIMEOUT environment variable, using default 1200")
+    PHYSICAL_DEADLINE = 1200
 
 # 内存事件注册表：task_id -> asyncio.Event
 _task_events: dict[int, asyncio.Event] = {}

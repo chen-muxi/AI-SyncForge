@@ -57,6 +57,8 @@ graph TD
 
 ### 1. 环境准备
 确保已安装 Python 3.10 或更高版本。
+> [!NOTE]
+> 本项目依赖 SQLite 3.35.0+ (发布于 2021-03) 以支持 `RETURNING` 原子语法。大多数现代 Linux 发行版（如 Ubuntu 20.04+, Debian 11+）均已内置支持。
 
 ```bash
 git clone https://github.com/your-username/AI-SyncForge.git

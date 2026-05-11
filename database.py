@@ -56,6 +56,7 @@ def init_db() -> None:
             CREATE TRIGGER IF NOT EXISTS trg_tasks_updated_at
             AFTER UPDATE ON tasks
             FOR EACH ROW
+            WHEN (NEW.updated_at IS OLD.updated_at)
             BEGIN
                 UPDATE tasks SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
             END;
