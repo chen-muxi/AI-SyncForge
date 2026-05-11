@@ -9,7 +9,7 @@ import threading
 import unittest
 from pathlib import Path
 
-TEST_DB_PATH = Path(__file__).parent / "test_task_queue.db"
+TEST_DB_PATH = Path("/tmp/test_task_queue.db")
 
 # 在导入 database 模块之前清理残留文件
 for suffix in ("", "-wal", "-shm"):
@@ -266,6 +266,27 @@ class TestConcurrency(unittest.TestCase):
                          "Duplicate task IDs were returned!")
         self.assertEqual(len(results), num_tasks)
 
+    def test_concurrent_get_pending_single_task(self):
+        """20 个线程抢夺同一个任务，必须且只能有 1 个成功。"""
+        database.create_task("single_proj", "code", "req")
+
+        results = []
+        lock = threading.Lock()
+
+        def worker():
+            task = database.get_pending_task()
+            if task:
+                with lock:
+                    results.append(task["id"])
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(len(results), 1, "Should only have ONE winner!")
+
 
 class TestSchemaExtension(unittest.TestCase):
     """测试 Schema 扩展：task_type 与 priority 字段。"""
@@ -377,6 +398,27 @@ class TestPollOpsTask(unittest.TestCase):
         database.poll_ops_task()
         task = database.get_task_by_id(task_id)
         self.assertEqual(task["status"], "testing")
+
+    def test_concurrent_poll_ops_single_task(self):
+        """20 个线程抢夺同一个 Ops 任务，必须且只能有 1 个成功。"""
+        database.create_task("ops_single", "fix", "req", task_type="ops_task")
+
+        results = []
+        lock = threading.Lock()
+
+        def worker():
+            task = database.poll_ops_task()
+            if task:
+                with lock:
+                    results.append(task["id"])
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(len(results), 1, "Should only have ONE Ops winner!")
 
 
 class TestStatusConstraint(unittest.TestCase):

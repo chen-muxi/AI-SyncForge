@@ -8,7 +8,7 @@ import os
 import unittest
 from pathlib import Path
 
-TEST_DB_PATH = Path(__file__).parent / "test_ops.db"
+TEST_DB_PATH = Path("/tmp/test_ops.db")
 
 for suffix in ("", "-wal", "-shm"):
     p = TEST_DB_PATH.parent / (TEST_DB_PATH.name + suffix)
@@ -49,6 +49,7 @@ def _force_stale(task_id: int, minutes_ago: int = 11):
             CREATE TRIGGER IF NOT EXISTS trg_tasks_updated_at
             AFTER UPDATE ON tasks
             FOR EACH ROW
+            WHEN (NEW.updated_at IS OLD.updated_at)
             BEGIN
                 UPDATE tasks SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
             END;
@@ -134,9 +135,9 @@ class TestFullRescueFlow(unittest.TestCase):
         async def scenario():
             # 缩短扫描间隔用于测试
             original_interval = ops_manager.SCAN_INTERVAL
-            original_threshold = ops_manager.STALE_THRESHOLD_MINUTES
+            original_threshold = ops_manager.WHISTLEBLOWER_TIMEOUT_SECONDS
             ops_manager.SCAN_INTERVAL = 1
-            ops_manager.STALE_THRESHOLD_MINUTES = 0  # 立即判定超时
+            ops_manager.WHISTLEBLOWER_TIMEOUT_SECONDS = 0  # 立即判定超时
 
             try:
                 # Dev 提交任务
@@ -182,7 +183,7 @@ class TestFullRescueFlow(unittest.TestCase):
 
             finally:
                 ops_manager.SCAN_INTERVAL = original_interval
-                ops_manager.STALE_THRESHOLD_MINUTES = original_threshold
+                ops_manager.WHISTLEBLOWER_TIMEOUT_SECONDS = original_threshold
 
         asyncio.run(scenario())
 

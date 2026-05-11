@@ -7,6 +7,7 @@ AI-SyncForge MCP Broker 服务
 import asyncio
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP
 
@@ -23,10 +24,20 @@ logger = logging.getLogger(__name__)
 # 初始化数据库
 database.init_db()
 
+
+@asynccontextmanager
+async def app_lifespan(app):
+    """服务启动时拉起 Ops 吹哨人协程。"""
+    asyncio.create_task(ops_manager.ops_watchdog())
+    logger.info("Ops watchdog coroutine launched")
+    yield
+
+
 # 创建 MCP Server
 mcp = FastMCP(
     "AI-SyncForge Broker",
     instructions="AI-SyncForge 任务调度中心，提供 Dev-QA-Ops 三方异步协作工具。",
+    lifespan=app_lifespan,
 )
 
 
@@ -114,13 +125,6 @@ async def manage_env(action: str, params: str, related_task_id: int | None = Non
 
 
 # ─── 服务启动 ─────────────────────────────────────────────────────────────────
-
-
-@mcp.on_event("startup")
-async def on_startup():
-    """服务启动时拉起 Ops 吹哨人协程。"""
-    asyncio.create_task(ops_manager.ops_watchdog())
-    logger.info("Ops watchdog coroutine launched")
 
 
 if __name__ == "__main__":

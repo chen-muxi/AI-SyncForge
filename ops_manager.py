@@ -21,11 +21,13 @@ except (ValueError, TypeError):
     WHISTLEBLOWER_TIMEOUT_SECONDS = 600
 
 
-def get_stale_testing_tasks(threshold_seconds: int = WHISTLEBLOWER_TIMEOUT_SECONDS) -> list[dict]:
+def get_stale_testing_tasks(threshold_seconds: int | None = None) -> list[dict]:
     """
     查询 status='testing' 且 updated_at 超过阈值的任务。
     仅扫描 dev_test 类型（ops_task 不参与超时判定）。
     """
+    if threshold_seconds is None:
+        threshold_seconds = WHISTLEBLOWER_TIMEOUT_SECONDS
     conn = database._connect()
     try:
         cursor = conn.execute(

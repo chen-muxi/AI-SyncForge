@@ -4,11 +4,200 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastMCP](https://img.shields.io/badge/MCP-FastMCP-orange.svg)](https://github.com/jlowin/fastmcp)
 
+[English](#-english) | [中文](#-中文)
+
+---
+
+## 🇺🇸 English
+
+**AI-SyncForge** is an innovative **LAN Multi-AI Collaborative Development Ecosystem**. It leverages the cross-network capabilities of the **Model Context Protocol (MCP)** to connect multiple AI programming tools (such as **Cursor**, **Windsurf**, **Claude Desktop**, etc.) within your local network. It breaks the boundaries of a single AI, building a fully automated, asynchronous three-party collaboration loop consisting of **Developer (Dev)**, **Quality Assurance (QA)**, and **Operations Expert (Ops)**.
+
+---
+
+### 💎 Core Advantages: Distributed Collaboration
+
+Unlike traditional single-agent development, the true power of AI-SyncForge lies in **distributed synergy**:
+
+- **🖥️ Cross-Software Linkage**: Let your **Cursor** focus on writing code, while **Windsurf** or **Claude Desktop** on another device in the LAN automatically handles testing.
+- **📱 Heterogeneous Compute Pool**: Fully utilize idle computing power. For example: a high-performance desktop runs the Dev role, a laptop runs the QA role, and even a tablet can participate in monitoring.
+- **🛡️ Zero Human Intervention Loop**: Task state transitions across processes and devices are managed via the MCP Broker. Developers can go "offline" after submitting code, with subsequent QA and environment fixes handled automatically by background AIs.
+- **🌐 Cross-Region Cloud Collaboration**: Combined with virtual LAN tools like **Tailscale** or **ZeroTier**, you can easily achieve cross-regional device linkage (e.g., coding at home, testing on a company server).
+- **⚡ Zero Latency State Sync**: Based on the `asyncio.Event` signal mechanism, ensuring that state changes are synchronized to all participants in milliseconds, even on different physical machines.
+
+---
+
+### 🌟 Key Features
+
+- **🚀 Zero-Latency Async Collaboration**: Utilizes `asyncio.Event` memory signal mechanism instead of traditional polling for millisecond-level notifications.
+- **🛡️ Automated Self-Healing (Whistleblower)**: Built-in Ops Whistleblower module continuously monitors stuck tasks. If a deadlock is detected, a high-priority emergency task is automatically dispatched.
+- **📦 Strong Consistency Storage Engine**: Based on SQLite WAL mode with strict `RETURNING` atomic lock syntax. We completely eliminate duplicate task picking and race conditions in high-concurrency environments in `get_pending_task` and `poll_ops_task`, ensuring absolute safety in multi-instance deployments.
+- **🌍 LAN Collaboration (SSE)**: Uses the Server-Sent Events (SSE) protocol to support remote connections for agents across devices and platforms.
+- **💰 Cost Optimization**: Deeply integrates Gemini 3 Flash for high-frequency QA. Cross-validation between "Dev-Test" heterogeneous models significantly reduces API costs.
+
+---
+
+### 🏗️ System Architecture
+
+AI-SyncForge uses a "Master-Slave" architecture. The **MCP Broker** acts as the central scheduler, and specialized agents connect via the SSE protocol.
+
+```mermaid
+graph TD
+    subgraph "Local / Server"
+        Broker["MCP Broker (FastMCP)"]
+        DB[(SQLite Task Queue)]
+        Watchdog[Ops Watchdog]
+    end
+
+    Cursor["Cursor (Dev Agent)"] -- "submit_and_wait" --> Broker
+    QA["Antigravity (QA Agent)"] -- "poll_task / finish_test" --> Broker
+    Ops["Ops-Forge (Ops Agent)"] -- "poll_ops_task / manage_env" --> Broker
+
+    Broker <--> DB
+    Watchdog -.-> DB
+```
+
+---
+
+### 🛠️ Quick Start
+
+#### 1. Prerequisites
+Ensure Python 3.10 or higher is installed.
+> [!NOTE]
+> This project requires SQLite 3.35.0+ (released 2021-03) to support `RETURNING` atomic syntax. Most modern Linux distributions (Ubuntu 20.04+, Debian 11+) include this by default.
+
+```bash
+git clone https://github.com/your-username/AI-SyncForge.git
+cd AI-SyncForge
+pip install -r requirements.txt
+```
+
+#### 2. Start Broker Service
+**Option A: Direct Run**
+```bash
+python3 server.py
+```
+
+**Option B: Docker Deployment (Recommended)**
+```bash
+docker-compose up -d
+```
+> [!TIP]
+> In Docker mode, the database file is persisted in the `./data` directory, and configuration is automatically loaded from `.env`.
+
+---
+
+⚙️ **Environment Variables (Optional)**
+
+AI-SyncForge allows you to customize the collaborative rhythm based on your hardware and network. You can set these before running or create a `.env` file:
+
+```bash
+# MCP Bridge Port (Default 8000)
+SYNCFORGE_PORT=8000
+# Whistleblower Deadlock Timeout (Default 600s/10min)
+WHISTLEBLOWER_TIMEOUT=600
+# Physical Disconnect Fallback Timeout (Default 1200s/20min)
+PHYSICAL_TIMEOUT=1200
+# Database Path
+DB_PATH=./task_queue.db
+# Log Level (DEBUG/INFO/WARNING/ERROR)
+LOG_LEVEL=INFO
+```
+
+#### 3. Configure Agent Roles
+This system supports three-party heterogeneous collaboration. Configure MCP connections in your respective agents (e.g., Cursor, Claude, GPT-4):
+
+- **Connection Details**: 
+  - **Type**: `sse`
+  - **URL**: `http://<broker-ip>:8000/sse`
+
+---
+
+### 🤖 Agent Roles & Prompts
+
+To ensure a smooth automated loop, we recommend configuring system prompts for each agent role.
+
+We provide two configuration schemes:
+1. **Distributed Workspace**: For multi-machine collaboration, prompts include full code transfer.
+2. **Unified Workspace**: For single-machine same-directory collaboration, using minimal communication based on file paths.
+
+👉 **[View Detailed Agent Roles & Prompts Guide](./PROMPTS.md)**
+
+---
+
+### 🧰 MCP Toolset
+
+| Tool Name | Caller | Description |
+| :--- | :--- | :--- |
+| `submit_and_wait` | **Dev** | Submits code and suspends the coroutine, waiting for test results in seconds. |
+| `poll_task` | **QA** | Long-polls for pending tasks, suspends connection if none. |
+| `finish_test` | **QA/Ops** | Submits test or fix results, instantly waking up the blocked Dev. |
+| `poll_ops_task` | **Ops** | Exclusive high-priority long-poll channel using atomic locks to fetch emergency tasks. |
+| `manage_env` | **Ops** | Executes self-healing operations like container restarts or environment cleanup. |
+
+---
+
+### 🏗️ User Experience Journey
+
+AI-SyncForge simulates real team collaboration. You just start the hub and act as the "Director":
+
+1.  **Hub Ready**: Start `server.py` (Broker) on a machine with a public or LAN IP.
+2.  **Activate Team**:
+    *   In **QA Software** (e.g., Windsurf), say: "*Start working, continuously listen for tasks.*"
+    *   In **Ops Software** (e.g., Claude Desktop), say: "*Start working, stand by for emergency response.*"
+3.  **Issue Strategy**: Give your technical plan to the **Dev Software** (e.g., Cursor) and command: "*Execute according to this plan. For every small module completed, call submit_and_wait to submit for testing.*"
+4.  **Agile Collaboration**:
+    *   **Dev** breaks down tasks, writes the first block, and submits it.
+    *   **QA** instantly senses the task, runs tests, and feeds back to Dev.
+    *   **Dev** receives the "pass" signal and continues to the next block.
+5.  **Emergency Response (Invisible Engine)**:
+    *   **Whistleblower (Watchdog)**: A silent monitoring coroutine runs inside the Broker. If a QA task is unresponsive for >10 mins (due to container crash or deadlock), the Whistleblower automatically generates a high-priority **Ops Rescue Task**.
+    *   **Ops Intervention**: The **Ops Agent** waiting on `poll_ops_task` immediately receives the task, analyzes it, calls `manage_env` to fix the environment, and notifies Dev to retry.
+6.  **Final Delivery**: Once the plan is complete, **Dev** stops iterating and reports the final execution results to you.
+
+---
+
+### 🔄 Automation Workflow
+
+1. **Submit**: Dev submits code, calls `submit_and_wait`, and enters a blocked wait state.
+2. **Test**: QA polls the task, runs tests, and calls `finish_test`.
+3. **Monitor (Whistleblower)**: Watchdog scans for `testing` tasks timed out for 10min -> Auto-generates `ops_task` (priority=999).
+4. **Rescue**: Ops Agent gets the task via `poll_ops_task` -> Executes `manage_env` -> `finish_test` wakes up Dev.
+5. **Loop**: Dev receives results and proceeds to the next development module.
+
+---
+
+### 🧪 Testing
+
+The project includes a comprehensive test suite covering everything from database atomicity to full-link self-healing.
+
+```bash
+python3 -m unittest test_database.py test_integration.py test_ops.py
+```
+
+---
+
+### 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+### 🤝 Contributing
+
+Contributions are welcome! If you have suggestions or find bugs, please open an Issue or Pull Request.
+
+> [!IMPORTANT]
+> When contributing code, please ensure all automated tests pass (`53/53 tests passed`) to maintain system stability.
+
+---
+
+## 🇨🇳 中文
+
 **AI-SyncForge** 是一个创新的 **局域网多 AI 协同开发生态**。它利用 **Model Context Protocol (MCP)** 的跨网络特性，将您局域网内的多个 AI 编程工具（如 **Cursor**、**Windsurf**、**Claude Desktop** 等）联结在一起，打破单一 AI 的能力边界，构建一套由 **开发者 (Dev)**、**质检员 (QA)** 与 **运维专家 (Ops)** 组成的三方全自动异步协作闭环。
 
 ---
 
-## 💎 核心优势：局域网多机协同
+### 💎 核心优势：局域网多机协同
 
 与传统的单智能体开发不同，AI-SyncForge 的真正力量在于**分布式协同**：
 
@@ -20,8 +209,7 @@
 
 ---
 
-## 🌟 关键特性
-
+### 🌟 关键特性
 
 - **🚀 零延迟异步协作**：利用 `asyncio.Event` 内存信号机制，取代传统的轮询，实现状态变更的毫秒级通知。
 - **🛡️ 自动化故障自愈 (Whistleblower)**：内置 Ops 吹哨人模块，持续监控卡死任务。发现死锁时自动下发高优先级急救工单。
@@ -31,7 +219,7 @@
 
 ---
 
-## 🏗️ 系统架构
+### 🏗️ 系统架构
 
 AI-SyncForge 采用“一主多从”架构。**MCP Broker** 作为中枢调度任务，各专业智能体通过 SSE 协议接入。
 
@@ -53,9 +241,9 @@ graph TD
 
 ---
 
-## 🛠️ 快速开始
+### 🛠️ 快速开始
 
-### 1. 环境准备
+#### 1. 环境准备
 确保已安装 Python 3.10 或更高版本。
 > [!NOTE]
 > 本项目依赖 SQLite 3.35.0+ (发布于 2021-03) 以支持 `RETURNING` 原子语法。大多数现代 Linux 发行版（如 Ubuntu 20.04+, Debian 11+）均已内置支持。
@@ -66,13 +254,13 @@ cd AI-SyncForge
 pip install -r requirements.txt
 ```
 
-### 2. 启动 Broker 服务
-#### 方式 A: 直接运行
+#### 2. 启动 Broker 服务
+**方式 A: 直接运行**
 ```bash
 python3 server.py
 ```
 
-#### 方式 B: Docker 部署 (推荐)
+**方式 B: Docker 部署 (推荐)**
 ```bash
 docker-compose up -d
 ```
@@ -98,7 +286,7 @@ DB_PATH=./task_queue.db
 LOG_LEVEL=INFO
 ```
 
-### 3. 配置智能体角色
+#### 3. 配置智能体角色
 本系统支持三方异构协同，请根据角色在相应智能体（如 Cursor, Claude, GPT-4 等）中配置 MCP 连接：
 
 - **连接方式**: 
@@ -107,7 +295,7 @@ LOG_LEVEL=INFO
 
 ---
 
-## 🤖 智能体角色与提示词 (Prompts)
+### 🤖 智能体角色与提示词 (Prompts)
 
 为确保全自动闭环顺利运行，建议为不同角色的智能体配置系统提示词（System Prompts）。
 
@@ -119,9 +307,7 @@ LOG_LEVEL=INFO
 
 ---
 
----
-
-## 🧰 MCP 工具集
+### 🧰 MCP 工具集
 
 | 工具名称 | 调用方 | 功能描述 |
 | :--- | :--- | :--- |
@@ -133,7 +319,7 @@ LOG_LEVEL=INFO
 
 ---
 
-## 🏗️ 用户体验流程 (User Experience Journey)
+### 🏗️ 用户体验流程 (User Experience Journey)
 
 AI-SyncForge 模拟了真实的团队协作，您只需启动中枢并扮演“总导演”角色：
 
@@ -153,7 +339,7 @@ AI-SyncForge 模拟了真实的团队协作，您只需启动中枢并扮演“�
 
 ---
 
-## 🔄 自动化流程
+### 🔄 自动化流程
 
 1. **提交**：Dev 提交代码，调用 `submit_and_wait` 进入阻塞等待。
 2. **测试**：QA 轮询到任务，执行测试后调用 `finish_test`。
@@ -163,7 +349,7 @@ AI-SyncForge 模拟了真实的团队协作，您只需启动中枢并扮演“�
 
 ---
 
-## 🧪 测试
+### 🧪 测试
 
 本项目内置了完整的测试套件，覆盖了从数据库原子性到全链路自愈的所有场景。
 
@@ -173,13 +359,13 @@ python3 -m unittest test_database.py test_integration.py test_ops.py
 
 ---
 
-## 📄 开源协议
+### 📄 开源协议
 
 本项目采用 [MIT License](LICENSE) 协议。
 
 ---
 
-## 🤝 贡献建议
+### 🤝 贡献建议
 
 我们欢迎任何形式的贡献！如果您有好的建议或发现了 Bug，请提交 Issue 或 Pull Request。
 

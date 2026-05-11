@@ -9,7 +9,7 @@ import time
 import unittest
 from pathlib import Path
 
-TEST_DB_PATH = Path(__file__).parent / "test_integration.db"
+TEST_DB_PATH = Path("/tmp/test_integration.db")
 
 for suffix in ("", "-wal", "-shm"):
     p = TEST_DB_PATH.parent / (TEST_DB_PATH.name + suffix)
@@ -153,6 +153,37 @@ class TestSubmitAndWait(unittest.TestCase):
                 self.assertNotIn(result["task_id"], mcp_tools._task_events)
             finally:
                 mcp_tools.PHYSICAL_DEADLINE = original
+
+        asyncio.run(scenario())
+
+    def test_memory_leak_defense_100_tasks(self):
+        """防御性测试：连续提交 100 个任务并完成，event_dict 必须回到低位。"""
+
+        async def scenario():
+            original_interval = mcp_tools.POLL_TASK_INTERVAL
+            mcp_tools.POLL_TASK_INTERVAL = 0.05  # 适中轮询，防止 CPU 抢占
+            try:
+                async def run_one(idx):
+                    dev_task = asyncio.create_task(
+                        mcp_tools.submit_and_wait(f"leak_{idx}", "code", "req")
+                    )
+                    
+                    await asyncio.sleep(0.05)
+                    
+                    task = await mcp_tools.poll_task(timeout=10)
+                    self.assertIsNotNone(task["task_id"], f"Task {idx} was not polled!")
+                    await mcp_tools.finish_test(task["task_id"], "success", "ok")
+                    
+                    # 等待唤醒，设置短超时防止死锁
+                    await asyncio.wait_for(dev_task, timeout=5)
+
+                for i in range(10):
+                    tasks = [run_one(i * 10 + j) for j in range(10)]
+                    await asyncio.gather(*tasks)
+
+                self.assertEqual(len(mcp_tools._task_events), 0)
+            finally:
+                mcp_tools.POLL_TASK_INTERVAL = original_interval
 
         asyncio.run(scenario())
 

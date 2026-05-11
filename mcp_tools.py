@@ -58,19 +58,25 @@ async def submit_and_wait(
     _task_events[task_id] = event
 
     try:
-        try:
-            await asyncio.wait_for(event.wait(), timeout=PHYSICAL_DEADLINE)
-        except asyncio.TimeoutError:
-            logger.error(
-                f"Task {task_id} hit physical deadline ({PHYSICAL_DEADLINE}s), "
-                "releasing coroutine without modifying status"
-            )
-            task = await asyncio.to_thread(database.get_task_by_id, task_id)
-            return {
-                "task_id": task_id,
-                "status": task["status"] if task else "unknown",
-                "message": f"物理死守超时（{PHYSICAL_DEADLINE}s），协程释放。任务状态未被修改，等待模块三处理。",
-            }
+        # 竞态防护：在注册事件后立刻检查数据库，防止 QA 抢跑导致错过通知
+        task = await asyncio.to_thread(database.get_task_by_id, task_id)
+        if task and task["status"] in ("success", "fail", "fail_by_ops_intervention"):
+            logger.info(f"Task {task_id} already completed before wait: {task['status']}")
+            # 已完成，无需等待
+        else:
+            try:
+                await asyncio.wait_for(event.wait(), timeout=PHYSICAL_DEADLINE)
+            except asyncio.TimeoutError:
+                logger.error(
+                    f"Task {task_id} hit physical deadline ({PHYSICAL_DEADLINE}s), "
+                    "releasing coroutine without modifying status"
+                )
+                task = await asyncio.to_thread(database.get_task_by_id, task_id)
+                return {
+                    "task_id": task_id,
+                    "status": task["status"] if task else "unknown",
+                    "message": f"物理死守超时（{PHYSICAL_DEADLINE}s），协程释放。任务状态未被修改，等待模块三处理。",
+                }
 
         task = await asyncio.to_thread(database.get_task_by_id, task_id)
         if task is None:
