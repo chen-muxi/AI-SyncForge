@@ -112,6 +112,19 @@ python3 server.py
 
 ---
 
+## 🏗️ 用户体验流程 (User Experience Journey)
+
+AI-SyncForge 将复杂的跨机协作简化为直观的线性流程：
+
+1.  **启动中枢**：在一台具备公网或局域网 IP 的机器上运行 `server.py`，建立 Broker。
+2.  **智能体接入**：在不同设备上启动 Cursor (Dev)、Antigravity (QA) 和 Ops-Forge (Ops)，并连接至同一个 Broker。
+3.  **开发者提交**：您在 Cursor 中写好代码后，只需一句指令：“*用 submit_and_wait 测一下这个模块*”。Cursor 随即进入“思考/等待”状态。
+4.  **全自动质检**：质检机（QA Agent）感知到任务，自动在本地拉起 Docker 或运行脚本。测试完成后，它会将报告传回 Broker。
+5.  **即时反馈**：一旦报告上传，您的 Cursor 会瞬间被唤醒并展示测试结果。
+6.  **应急处理 (如有)**：如果质检机因为环境 OOM 挂了，运维机（Ops Agent）会立即收到警报，执行 `manage_env` 重启环境，并告知开发机：“*刚才环境崩了，我已经修好了，请重新提交*”。
+
+---
+
 ## 🔄 自动化流程
 
 1. **提交**：Dev 提交代码，调用 `submit_and_wait` 进入阻塞等待。
