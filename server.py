@@ -6,6 +6,7 @@ AI-SyncForge MCP Broker 服务
 
 import asyncio
 import logging
+import os
 
 from fastmcp import FastMCP
 
@@ -14,7 +15,7 @@ import mcp_tools
 import ops_manager
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -123,5 +124,6 @@ async def on_startup():
 
 
 if __name__ == "__main__":
-    logger.info("Starting AI-SyncForge MCP Broker on port 8000 (SSE mode)...")
-    mcp.run(transport="sse", host="0.0.0.0", port=8000)
+    port = int(os.getenv("SYNCFORGE_PORT", 8000))
+    logger.info(f"Starting AI-SyncForge MCP Broker on port {port} (SSE mode)...")
+    mcp.run(transport="sse", host="0.0.0.0", port=port)

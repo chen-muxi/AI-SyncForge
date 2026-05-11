@@ -5,6 +5,7 @@ AI-SyncForge 吹哨人模块 (Ops Manager)
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 
 import database
@@ -12,10 +13,11 @@ import database
 logger = logging.getLogger(__name__)
 
 SCAN_INTERVAL = 30  # 扫描间隔（秒）
-STALE_THRESHOLD_MINUTES = 10  # 死锁判定阈值（分钟）
+# 从环境变量获取吹哨人判定阈值（秒），默认为 600 秒（10 分钟）
+WHISTLEBLOWER_TIMEOUT_SECONDS = int(os.getenv("WHISTLEBLOWER_TIMEOUT", 600))
 
 
-def get_stale_testing_tasks(threshold_minutes: int = STALE_THRESHOLD_MINUTES) -> list[dict]:
+def get_stale_testing_tasks(threshold_seconds: int = WHISTLEBLOWER_TIMEOUT_SECONDS) -> list[dict]:
     """
     查询 status='testing' 且 updated_at 超过阈值的任务。
     仅扫描 dev_test 类型（ops_task 不参与超时判定）。
@@ -26,7 +28,7 @@ def get_stale_testing_tasks(threshold_minutes: int = STALE_THRESHOLD_MINUTES) ->
             "SELECT * FROM tasks "
             "WHERE status = 'testing' AND task_type = 'dev_test' "
             "AND updated_at <= datetime('now', ?);",
-            (f"-{threshold_minutes} minutes",),
+            (f"-{threshold_seconds} seconds",),
         )
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
@@ -63,7 +65,7 @@ async def ops_watchdog() -> None:
     """
     logger.info(
         f"Ops watchdog started: scanning every {SCAN_INTERVAL}s, "
-        f"stale threshold = {STALE_THRESHOLD_MINUTES} min"
+        f"stale threshold = {WHISTLEBLOWER_TIMEOUT_SECONDS}s"
     )
 
     while True:
@@ -78,7 +80,7 @@ async def ops_watchdog() -> None:
 
                 rescue_id = await asyncio.to_thread(create_ops_rescue_task, task)
                 logger.warning(
-                    f"WHISTLE BLOWN: Task {task['id']} stuck for >{STALE_THRESHOLD_MINUTES}min, "
+                    f"WHISTLE BLOWN: Task {task['id']} stuck for >{WHISTLEBLOWER_TIMEOUT_SECONDS}s, "
                     f"ops_task {rescue_id} created"
                 )
 

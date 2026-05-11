@@ -3,11 +3,13 @@ AI-SyncForge 核心状态机与存储引擎
 基于 SQLite 的任务队列持久化层，提供原子性 CRUD 操作。
 """
 
+import os
 import sqlite3
 import threading
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "task_queue.db"
+# 从环境变量获取数据库路径，默认为当前目录下的 task_queue.db
+DB_PATH = Path(os.getenv("DB_PATH", Path(__file__).parent / "task_queue.db"))
 
 _write_lock = threading.Lock()
 

@@ -70,6 +70,23 @@ python3 server.py
 ```
 服务将启动并在 `http://0.0.0.0:8000` 监听 SSE 连接。
 
+⚙️ **环境变量配置 (可选)**
+
+AI-SyncForge 允许您根据硬件算力和网络环境自定义协同节奏。您可以在运行前设置以下环境变量，或在根目录创建 `.env` 文件：
+
+```bash
+# MCP 桥接服务端口 (默认 8000)
+SYNCFORGE_PORT=8000
+# 运维吹哨人死锁判定时间 (默认 600秒/10分钟)
+WHISTLEBLOWER_TIMEOUT=600
+# 开发者物理断开兜底时间 (默认 1200秒/20分钟)
+PHYSICAL_TIMEOUT=1200
+# 数据库挂载路径
+DB_PATH=./task_queue.db
+# 日志级别 (DEBUG/INFO/WARNING/ERROR)
+LOG_LEVEL=INFO
+```
+
 ### 3. 配置智能体角色
 本系统支持三方异构协同，请根据角色在相应智能体（如 Cursor, Claude, GPT-4 等）中配置 MCP 连接：
 
