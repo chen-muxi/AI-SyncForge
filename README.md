@@ -25,7 +25,7 @@
 
 - **🚀 零延迟异步协作**：利用 `asyncio.Event` 内存信号机制，取代传统的轮询，实现状态变更的毫秒级通知。
 - **🛡️ 自动化故障自愈 (Whistleblower)**：内置 Ops 吹哨人模块，持续监控卡死任务。发现死锁时自动下发高优先级急救工单。
-- **📦 强一致性存储引擎**：基于 SQLite WAL 模式，配合原子性 `UPDATE...RETURNING` 语法，确保任务拉取在并发场景下绝对安全。
+- **📦 强一致性存储引擎**：基于 SQLite WAL 模式，配合严格的 `RETURNING` 原子锁语法。我们在底层的 `get_pending_task` 和 `poll_ops_task` 中彻底锁死了高并发环境下的重复接单和竞态风险，确保多实例部署下的绝对安全。
 - **🌍 局域网协同 (SSE)**：采用 Server-Sent Events (SSE) 协议，支持跨设备、跨平台的智能体远程连接。
 - **💰 成本优化**：深度集成 Gemini 3 Flash 进行高频质检，通过“开发-测试”模型异构交叉验证，大幅降低 API 成本。
 
@@ -86,7 +86,8 @@ python3 server.py
 ### 👨‍💻 Dev Agent (开发者)
 **推荐工具：** Cursor
 > **System Prompt:**
-> "你是 AI-SyncForge 生态中的开发者。在完成代码编写后，必须调用 `submit_and_wait` 工具提交代码并进行异步质检。在工具返回最终测试报告前，请保持阻塞等待状态。若测试失败，请根据报告路径读取内容并修复代码，直到通过为止。"
+> "你是 AI-SyncForge 生态中的开发者。在完成代码编写后，必须调用 `submit_and_wait` 工具提交代码并进行异步质检。在工具返回最终测试报告前，请保持阻塞等待状态。
+> **注意**：如果返回的状态是 `fail`，请根据报告修复代码逻辑；如果返回的状态是 `fail_by_ops_intervention` 或触发了底层超时，说明测试环境发生了死锁或 OOM，请重点审查代码是否存在无限循环或严重的内存泄露，优化资源消耗后重新提交。"
 
 ### 🔍 QA Agent (质检员)
 **推荐工具：** Antigravity / Gemini 3 Flash
@@ -96,7 +97,7 @@ python3 server.py
 ### 🛠️ Ops Agent (运维专家)
 **推荐工具：** Ops-Forge
 > **System Prompt:**
-> "你是一个平时休眠的应急响应专家。请持续调用 `poll_ops_task` 监听系统工单。只有当系统抛出 `ops_task` 时，才立即分析故障原因。你可以调用 `manage_env` 清理容器环境或重启服务，但严禁操作 Broker 自身。修复后通过 `finish_test` 触发自愈通知。"
+> "你是一个平时休眠的应急响应专家。请持续调用 `poll_ops_task` 监听系统工单。只有当系统抛出 `ops_task` 时，才立即分析故障原因。你可以调用 `manage_env` 清理容器环境或重启现场，但严禁操作 Broker 自身。修复完成后，必须调用 `finish_test`（或对应状态更新工具），并将状态严格设置为 `fail_by_ops_intervention`，同时附上故障分析日志，以唤醒阻塞中的开发者。"
 
 ---
 
@@ -107,7 +108,7 @@ python3 server.py
 | `submit_and_wait` | **Dev** | 提交代码并挂起协程，等待测试结果秒级返回。 |
 | `poll_task` | **QA** | 长轮询获取待测任务，无任务时挂起连接。 |
 | `finish_test` | **QA/Ops** | 提交测试或修复结果，瞬间唤醒阻塞中的 Dev。 |
-| `poll_ops_task` | **Ops** | 专属高优先级通道，拉取运维急救工单。 |
+| `poll_ops_task` | **Ops** | 专属高优先级长轮询通道，利用原子锁安全拉取运维急救工单。 |
 | `manage_env` | **Ops** | 执行容器重启、环境清理等自愈操作。 |
 
 ---
