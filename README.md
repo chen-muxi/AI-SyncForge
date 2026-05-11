@@ -4,11 +4,23 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastMCP](https://img.shields.io/badge/MCP-FastMCP-orange.svg)](https://github.com/jlowin/fastmcp)
 
-**AI-SyncForge** 是一个基于 **Model Context Protocol (MCP)** 的全自动异步开发与运维生态系统。它构建了一个由 **Dev (Cursor)**、**QA (Antigravity/Gemini 3 Flash)** 与 **Ops (Ops-Forge)** 组成的三方全自动协同闭环，旨在实现零人工干预的代码编写、质量检测与故障自愈。
+**AI-SyncForge** 是一个创新的 **局域网多 AI 协同开发生态**。它利用 **Model Context Protocol (MCP)** 的跨网络特性，将您局域网内的多个 AI 编程工具（如 **Cursor**、**Windsurf**、**Claude Desktop** 等）联结在一起，打破单一 AI 的能力边界，构建一套由 **开发者 (Dev)**、**质检员 (QA)** 与 **运维专家 (Ops)** 组成的三方全自动异步协作闭环。
 
 ---
 
-## 🌟 核心特性
+## 💎 核心优势：局域网多机协同
+
+与传统的单智能体开发不同，AI-SyncForge 的真正力量在于**分布式协同**：
+
+- **🖥️ 跨软件联动**：让你的 **Cursor** 专门负责写代码，而让局域网另一台设备上的 **Windsurf** 或 **Claude Desktop** 自动负责跑测试。
+- **📱 异构设备算力池**：充分利用闲置算力。例如：高性能主机运行 Dev 角色，笔记本挂机运行 QA 角色，甚至平板设备也能参与监控。
+- **🛡️ 零人工干预闭环**：通过 MCP Broker 实现跨进程、跨设备的任务状态流转，开发者提交代码后即可“离线”，后续的质检与环境修复完全由后台 AI 自动完成。
+- **⚡ 零延迟状态同步**：基于 `asyncio.Event` 信号机制，确保即便在不同物理机上，状态变更也能在毫秒级同步到所有参与者。
+
+---
+
+## 🌟 关键特性
+
 
 - **🚀 零延迟异步协作**：利用 `asyncio.Event` 内存信号机制，取代传统的轮询，实现状态变更的毫秒级通知。
 - **🛡️ 自动化故障自愈 (Whistleblower)**：内置 Ops 吹哨人模块，持续监控卡死任务。发现死锁时自动下发高优先级急救工单。
