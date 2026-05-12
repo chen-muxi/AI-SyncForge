@@ -108,7 +108,7 @@ This system supports three-party heterogeneous collaboration. Configure MCP conn
 
 - **Connection Details**: 
   - **Type**: `sse`
-  - **URL**: `http://<broker-ip>:8000/sse`
+  - **URL**: `http://<broker-ip>:8000/`
 
 ---
 
@@ -291,7 +291,7 @@ LOG_LEVEL=INFO
 
 - **连接方式**: 
   - **Type**: `sse`
-  - **URL**: `http://<broker-ip>:8000/sse`
+  - **URL**: `http://<broker-ip>:8000/`
 
 ---
 
