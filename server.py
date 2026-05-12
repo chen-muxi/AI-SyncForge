@@ -132,7 +132,7 @@ async def manage_env(action: str, params: str, related_task_id: int | None = Non
 
 if __name__ == "__main__":
     port = int(os.getenv("SYNCFORGE_PORT", 8000))
-    logger.info(f"Starting AI-SyncForge MCP Broker on port {port} (SSE mode with CORS)...")
+    logger.info(f"Starting AI-SyncForge MCP Broker on port {port} (Streamable-HTTP mode)...")
     
     middleware = [
         Middleware(
@@ -143,5 +143,35 @@ if __name__ == "__main__":
         )
     ]
     
-    app = mcp.http_app(transport="sse", middleware=middleware)
+    # 使用 streamable-http 模式，它对纯 HTTP POST 更加友好，且原生支持根路径交互
+    app = mcp.http_app(transport="streamable-http", path="/", middleware=middleware)
+    
+    # 协议级路由修复：
+    # 目的：使用 ASGI 中间件拦截 POST/DELETE / 请求并转发给消息处理器，解决部分客户端预检或清理行为导致的 405
+    message_handler_app = None
+    for route in app.routes:
+        if hasattr(route, "path") and route.path.startswith("/messages"):
+            message_handler_app = route.app
+            break
+            
+    if message_handler_app:
+        class RootBypassMiddleware:
+            def __init__(self, app, target_asgi_app):
+                self.app = app
+                self.target_asgi_app = target_asgi_app
+
+            async def __call__(self, scope, receive, send):
+                # 拦截发往根路径的 POST 和 DELETE 请求
+                if scope["type"] == "http" and scope["path"] == "/" and scope["method"] in ("POST", "DELETE"):
+                    await self.target_asgi_app(scope, receive, send)
+                else:
+                    await self.app(scope, receive, send)
+
+        # 包装应用
+        app = RootBypassMiddleware(app, message_handler_app)
+        logger.info("CRITICAL: Root-Path POST/DELETE bypass middleware active")
+    
+    logger.info("AI-SyncForge Broker is now running in Streamable-HTTP mode")
+
+    # 3. 运行服务
     uvicorn.run(app, host="0.0.0.0", port=port)

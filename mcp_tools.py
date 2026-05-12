@@ -176,10 +176,12 @@ async def manage_env(action: str, params: str, related_task_id: int | None = Non
     if action not in ALLOWED_ACTIONS:
         return {"success": False, "message": f"Unsupported action: {action}"}
 
-    if "broker" in params.lower():
+    # 安全防护：防止通过名称或 ID 误伤 Broker 自身容器
+    FORBIDDEN_KEYWORDS = ("broker", "syncforge", "ai-syncforge")
+    if any(kw in params.lower() for kw in FORBIDDEN_KEYWORDS):
         return {
             "success": False,
-            "message": "FORBIDDEN: 严禁对 Broker 自身容器执行操作。",
+            "message": "FORBIDDEN: 严禁对 Broker 自身容器（AI-SyncForge）执行破坏性操作。",
         }
 
     logger.info(f"Ops manage_env: action={action}, params={params}")
