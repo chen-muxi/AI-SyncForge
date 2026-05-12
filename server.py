@@ -10,6 +10,9 @@ import os
 from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+import uvicorn
 
 import database
 import mcp_tools
@@ -129,5 +132,16 @@ async def manage_env(action: str, params: str, related_task_id: int | None = Non
 
 if __name__ == "__main__":
     port = int(os.getenv("SYNCFORGE_PORT", 8000))
-    logger.info(f"Starting AI-SyncForge MCP Broker on port {port} (SSE mode)...")
-    mcp.run(transport="sse", host="0.0.0.0", port=port)
+    logger.info(f"Starting AI-SyncForge MCP Broker on port {port} (SSE mode with CORS)...")
+    
+    middleware = [
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    ]
+    
+    app = mcp.http_app(transport="sse", middleware=middleware)
+    uvicorn.run(app, host="0.0.0.0", port=port)
