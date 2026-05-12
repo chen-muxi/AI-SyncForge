@@ -1,6 +1,0 @@
-...........Task 1 hit physical deadline (2s), releasing coroutine without modifying status
-.
-----------------------------------------------------------------------
-Ran 12 tests in 18.602s
-
-OK
