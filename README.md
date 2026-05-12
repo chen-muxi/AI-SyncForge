@@ -124,6 +124,29 @@ docker-compose up -d --build
 
 ---
 
+### ⚙️ 环境变量与调优 (Environment Variables & Tuning)
+
+AI-SyncForge 允许您根据硬件和网络环境自定义协作节奏。您可以在 `.env` 文件中设置以下变量：
+
+```bash
+# MCP Broker 端口 (默认 8000，Docker 映射为 8080)
+SYNCFORGE_PORT=8000
+# 吹哨人死锁判定阈值 (默认 600s/10分钟)
+WHISTLEBLOWER_TIMEOUT=600
+# 物理连接死守超时 (默认 1200s/20分钟)
+PHYSICAL_TIMEOUT=1200
+# 数据库路径
+DB_PATH=./task_queue.db
+# 日志级别 (DEBUG/INFO/WARNING/ERROR)
+LOG_LEVEL=INFO
+```
+
+> [!IMPORTANT]
+> **运维小贴士 (Performance Tip)**：如果在实际使用场景（如 Cursor 配合 Windsurf）中遇到任何任务分发或状态同步延迟，只需调整 `.env` 中的 `WHISTLEBLOWER_TIMEOUT` 或增加轮询频率即可。
+
+
+---
+
 ### 🧰 MCP 工具集
 
 | 工具名称 | 调用者 | 描述 |
