@@ -8,8 +8,9 @@ import os
 import time
 import unittest
 from pathlib import Path
+import tempfile
 
-TEST_DB_PATH = Path("/tmp/test_integration.db")
+TEST_DB_PATH = Path(tempfile.gettempdir()) / "test_integration.db"
 
 for suffix in ("", "-wal", "-shm"):
     p = TEST_DB_PATH.parent / (TEST_DB_PATH.name + suffix)

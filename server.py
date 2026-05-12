@@ -51,10 +51,8 @@ mcp = FastMCP(
 async def submit_and_wait(project: str, code: str, req: str) -> dict:
     """
     [Dev] 提交代码并等待测试结果。
-
     将代码与测试需求写入队列，通过事件通知机制等待 QA 完成测试后毫秒级返回结果。
     超时判定权归属 Ops 监控模块，本工具不主动熔断。
-
     Args:
         project: 项目名称
         code: 待测代码内容
@@ -70,11 +68,9 @@ async def submit_and_wait(project: str, code: str, req: str) -> dict:
 async def poll_task(timeout: int = 300) -> dict:
     """
     [QA] 长轮询获取待测任务。
-
     内部循环等待直到有新的 dev_test 任务可用，避免客户端空轮询。
-
     Args:
-        timeout: 最大等待秒数（默认 300）
+        timeout: 最大等待秒数（默认 300）。
     """
     return await mcp_tools.poll_task(timeout)
 
@@ -83,12 +79,10 @@ async def poll_task(timeout: int = 300) -> dict:
 async def finish_test(task_id: int, status: str, report_meta: str) -> dict:
     """
     [QA] 提交测试结果。
-
     将测试状态与报告写回任务队列，解除 Dev 端的等待阻塞。
-
     Args:
         task_id: 任务 ID
-        status: 测试结果（'success' / 'fail'）
+        status: 测试结果 ('success' / 'fail')
         report_meta: 报告路径或描述
     """
     return await mcp_tools.finish_test(task_id, status, report_meta)
@@ -101,12 +95,10 @@ async def finish_test(task_id: int, status: str, report_meta: str) -> dict:
 async def poll_ops_task(timeout: int = 300) -> dict:
     """
     [Ops] 长轮询获取运维急救任务。
-
     专供 Ops-Forge 使用，拉取系统自动生成的 ops_task 工单。
     Ops-Forge 启动后进入此长轮询状态，时刻待命。
-
     Args:
-        timeout: 最大等待秒数（默认 300）
+        timeout: 最大等待秒数（默认 300）。
     """
     return await mcp_tools.poll_ops_task(timeout)
 
@@ -115,12 +107,10 @@ async def poll_ops_task(timeout: int = 300) -> dict:
 async def manage_env(action: str, params: str, related_task_id: int | None = None) -> dict:
     """
     [Ops] 执行环境管理操作。
-
     支持对故障容器执行 restart/cleanup/logs/inspect 操作。
     严禁重启 Broker 自身容器。操作完成后自动触发事件通知唤醒 Dev。
-
     Args:
-        action: 操作类型（'restart' / 'cleanup' / 'logs' / 'inspect'）
+        action: 操作类型 ('restart' / 'cleanup' / 'logs' / 'inspect')
         params: 操作参数（容器名称、路径等）
         related_task_id: 关联的原始故障任务 ID（可选）
     """
@@ -149,9 +139,11 @@ if __name__ == "__main__":
     # 协议级路由修复：
     # 目的：使用 ASGI 中间件拦截 POST/DELETE / 请求并转发给消息处理器，解决部分客户端预检或清理行为导致的 405
     message_handler_app = None
+    target_path = os.getenv("MCP_MESSAGE_PATH", "/messages")
     for route in app.routes:
-        if hasattr(route, "path") and route.path.startswith("/messages"):
+        if hasattr(route, "path") and route.path.startswith(target_path):
             message_handler_app = route.app
+            logger.info(f"Detected message handler at {route.path}")
             break
             
     if message_handler_app:
@@ -161,8 +153,12 @@ if __name__ == "__main__":
                 self.target_asgi_app = target_asgi_app
 
             async def __call__(self, scope, receive, send):
-                # 拦截发往根路径的 POST 和 DELETE 请求
-                if scope["type"] == "http" and scope["path"] == "/" and scope["method"] in ("POST", "DELETE"):
+                # 拦截发往根路径的 POST 或 DELETE 请求
+                if (
+                    scope["type"] == "http" 
+                    and scope["path"] == "/" 
+                    and scope.get("method") in ("POST", "DELETE")
+                ):
                     await self.target_asgi_app(scope, receive, send)
                 else:
                     await self.app(scope, receive, send)
@@ -170,8 +166,10 @@ if __name__ == "__main__":
         # 包装应用
         app = RootBypassMiddleware(app, message_handler_app)
         logger.info("CRITICAL: Root-Path POST/DELETE bypass middleware active")
+    else:
+        logger.warning("Could not detect message handler app; Root-Path bypass middleware NOT active")
     
     logger.info("AI-SyncForge Broker is now running in Streamable-HTTP mode")
 
-    # 3. 运行服务
+    # 运行服务
     uvicorn.run(app, host="0.0.0.0", port=port)

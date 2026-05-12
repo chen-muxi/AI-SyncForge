@@ -6,13 +6,13 @@ AI-SyncForge 吹哨人模块 (Ops Manager)
 import asyncio
 import logging
 import os
-from datetime import datetime, timedelta, timezone
 
 import database
 
 logger = logging.getLogger(__name__)
 
 SCAN_INTERVAL = 30  # 扫描间隔（秒）
+
 # 从环境变量获取吹哨人判定阈值（秒），默认为 600 秒（10 分钟）
 try:
     WHISTLEBLOWER_TIMEOUT_SECONDS = int(os.getenv("WHISTLEBLOWER_TIMEOUT", 600))
@@ -44,7 +44,7 @@ def get_stale_testing_tasks(threshold_seconds: int | None = None) -> list[dict]:
 
 def create_ops_rescue_task(stale_task: dict) -> int:
     """
-    为超时死锁任务生成一条 ops_task 急救工单。
+    为超时死锁任务生成一个 ops_task 急救工单。
     code_content 记录被判定为死锁的任务 ID 及元数据。
     """
     rescue_info = (

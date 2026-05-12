@@ -8,8 +8,9 @@ import sqlite3
 import threading
 import unittest
 from pathlib import Path
+import tempfile
 
-TEST_DB_PATH = Path("/tmp/test_task_queue.db")
+TEST_DB_PATH = Path(tempfile.gettempdir()) / "test_task_queue.db"
 
 # 在导入 database 模块之前清理残留文件
 for suffix in ("", "-wal", "-shm"):

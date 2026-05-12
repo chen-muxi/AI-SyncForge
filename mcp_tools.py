@@ -1,18 +1,19 @@
 """
-AI-SyncForge MCP 工具层
-将核心状态机封装为 MCP 标准工具，实现 Dev-QA 异步协作流。
-基于 asyncio.Event 内存通知机制实现零延迟状态回调。
+AI-SyncForge MCP 工具实现
+提供 Dev/QA/Ops 三方协作工具的具体逻辑实现。
 """
 
 import asyncio
 import logging
 import os
+import re
 
 import database
 
 logger = logging.getLogger(__name__)
 
 POLL_TASK_INTERVAL = 3  # poll_task 内部轮询间隔
+
 # 从环境变量获取物理死守时间，默认为 1200 秒（20 分钟）
 try:
     PHYSICAL_DEADLINE = int(os.getenv("PHYSICAL_TIMEOUT", 1200))
@@ -38,16 +39,13 @@ async def submit_and_wait(
 ) -> dict:
     """
     [Dev 工具] 提交代码并等待测试结果。
-
     使用 asyncio.Event 实现零延迟异步等待，状态变更后毫秒级响应。
-    保留 20 分钟物理死守防止极端情况下的协程泄露，
-    但不主动熔断——超时判定权归属模块三。
-
+    保留 20 分钟物理死守防止极端情况下的协程泄露。
+    但不主动熔断——超时判定权归属 Ops 模块。
     Args:
         project: 项目名称
         code: 待测代码内容
         req: 测试需求描述
-
     Returns:
         包含任务最终状态与报告信息的字典
     """
@@ -75,7 +73,7 @@ async def submit_and_wait(
                 return {
                     "task_id": task_id,
                     "status": task["status"] if task else "unknown",
-                    "message": f"物理死守超时（{PHYSICAL_DEADLINE}s），协程释放。任务状态未被修改，等待模块三处理。",
+                    "message": f"物理死守超时（{PHYSICAL_DEADLINE}s），协程释放。任务状态未被修改，等待运维处理。",
                 }
 
         task = await asyncio.to_thread(database.get_task_by_id, task_id)
@@ -96,18 +94,17 @@ async def submit_and_wait(
 async def poll_task(timeout: int = 300) -> dict:
     """
     [QA 工具] 长轮询获取待测任务。
-
     在服务端内部循环等待，直到有可用任务或超时。
     避免客户端频繁发起空请求。
-
     Args:
-        timeout: 最大等待秒数，默认 300 秒
-
+        timeout: 最大等待秒数，默认 300 秒。
     Returns:
         任务详情字典，或超时无任务的提示
     """
-    elapsed = 0
-    while elapsed < timeout:
+    start_time = asyncio.get_event_loop().time()
+    end_time = start_time + timeout
+    
+    while asyncio.get_event_loop().time() < end_time:
         task = await asyncio.to_thread(database.get_pending_task)
         if task is not None:
             logger.info(f"Task {task['id']} dispatched to QA")
@@ -118,27 +115,34 @@ async def poll_task(timeout: int = 300) -> dict:
                 "test_requirement": task["test_requirement"],
             }
 
-        await asyncio.sleep(POLL_TASK_INTERVAL)
-        elapsed += POLL_TASK_INTERVAL
+        remaining = end_time - asyncio.get_event_loop().time()
+        if remaining <= 0:
+            break
+        await asyncio.sleep(min(POLL_TASK_INTERVAL, remaining))
 
-    return {"task_id": None, "message": "轮询超时，当前无待测任务。"}
+    return {
+        "task_id": None,
+        "project_name": None,
+        "code_content": None,
+        "test_requirement": None,
+        "message": "轮询超时，当前无待测任务。",
+    }
 
 
 async def poll_ops_task(timeout: int = 300) -> dict:
     """
     [Ops 工具] 长轮询获取运维急救任务。
-
     专供 Ops-Forge 使用，仅拉取 task_type='ops_task' 的任务。
     Ops-Forge 启动后进入此长轮询状态，时刻待命。
-
     Args:
-        timeout: 最大等待秒数，默认 300 秒
-
+        timeout: 最大等待秒数，默认 300 秒。
     Returns:
         运维任务详情字典，或超时无任务的提示
     """
-    elapsed = 0
-    while elapsed < timeout:
+    start_time = asyncio.get_event_loop().time()
+    end_time = start_time + timeout
+
+    while asyncio.get_event_loop().time() < end_time:
         task = await asyncio.to_thread(database.poll_ops_task)
         if task is not None:
             logger.info(f"Ops task {task['id']} dispatched to Ops-Forge")
@@ -150,24 +154,30 @@ async def poll_ops_task(timeout: int = 300) -> dict:
                 "priority": task["priority"],
             }
 
-        await asyncio.sleep(POLL_TASK_INTERVAL)
-        elapsed += POLL_TASK_INTERVAL
+        remaining = end_time - asyncio.get_event_loop().time()
+        if remaining <= 0:
+            break
+        await asyncio.sleep(min(POLL_TASK_INTERVAL, remaining))
 
-    return {"task_id": None, "message": "轮询超时，当前无运维任务。"}
+    return {
+        "task_id": None,
+        "project_name": None,
+        "code_content": None,
+        "test_requirement": None,
+        "priority": None,
+        "message": "轮询超时，当前无运维任务。",
+    }
 
 
 async def manage_env(action: str, params: str, related_task_id: int | None = None) -> dict:
     """
     [Ops 工具] 执行环境管理操作。
-
     支持对故障容器的 restart/cleanup/logs 等操作。
     严禁重启 Broker 自身容器。
-
     Args:
-        action: 操作类型 ('restart' / 'cleanup' / 'logs')
+        action: 操作类型 ('restart' / 'cleanup' / 'logs' / 'inspect')
         params: 操作参数（如容器名称、路径等）
         related_task_id: 关联的原始任务 ID（可选）
-
     Returns:
         操作结果
     """
@@ -205,15 +215,12 @@ async def manage_env(action: str, params: str, related_task_id: int | None = Non
 async def finish_test(task_id: int, status: str, report_meta: str) -> dict:
     """
     [QA/Ops 工具] 提交测试或修复结果。
-
     更新任务状态后立即触发内存事件通知，唤醒等待中的 submit_and_wait 协程。
     所有外部状态变更必须通过此接口，确保事件信号不被绕过。
-
     Args:
         task_id: 任务 ID
         status: 结果状态 ('success' / 'fail' / 'fail_by_ops_intervention')
         report_meta: 报告路径或描述
-
     Returns:
         操作确认信息
     """

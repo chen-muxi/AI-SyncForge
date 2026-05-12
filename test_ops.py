@@ -7,8 +7,9 @@ import asyncio
 import os
 import unittest
 from pathlib import Path
+import tempfile
 
-TEST_DB_PATH = Path("/tmp/test_ops.db")
+TEST_DB_PATH = Path(tempfile.gettempdir()) / "test_ops.db"
 
 for suffix in ("", "-wal", "-shm"):
     p = TEST_DB_PATH.parent / (TEST_DB_PATH.name + suffix)

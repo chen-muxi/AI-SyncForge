@@ -86,7 +86,7 @@ AI-SyncForge 采用“中心调度”架构。**MCP Broker** 作为核心调度�
 
 ```mermaid
 graph TD
-    subgraph "核心服务端 (Broker Hub)"
+    subgraph "核心服务器 (Broker Hub)"
         Broker["MCP Broker (流式 HTTP 模式)"]
         DB[(SQLite 任务队列)]
         Watchdog[Ops 吹哨人]
@@ -103,7 +103,6 @@ graph TD
 ---
 
 ### 🛠️ 快速开始
-
 #### 1. 启动 Broker 服务
 推荐使用 Docker 一键部署：
 ```bash
@@ -112,7 +111,6 @@ docker-compose up -d --build
 
 #### 2. 配置 Agent 客户端
 在您的 MCP 客户端配置（如 `mcp_config.json`）中添加：
-
 ```json
 "ai-syncforge-broker": {
   "serverUrl": "http://localhost:8080/"
@@ -136,7 +134,7 @@ WHISTLEBLOWER_TIMEOUT=600
 # 物理连接死守超时 (默认 1200s/20分钟)
 PHYSICAL_TIMEOUT=1200
 # 数据库路径
-DB_PATH=./task_queue.db
+# DB_PATH=./task_queue.db
 # 日志级别 (DEBUG/INFO/WARNING/ERROR)
 LOG_LEVEL=INFO
 ```
@@ -144,11 +142,9 @@ LOG_LEVEL=INFO
 > [!IMPORTANT]
 > **运维小贴士 (Performance Tip)**：如果在实际使用场景（如 Cursor 配合 Windsurf）中遇到任何任务分发或状态同步延迟，只需调整 `.env` 中的 `WHISTLEBLOWER_TIMEOUT` 或增加轮询频率即可。
 
-
 ---
 
 ### 🧰 MCP 工具集
-
 | 工具名称 | 调用者 | 描述 |
 | :--- | :--- | :--- |
 | `submit_and_wait` | **Dev** | 提交代码并挂载协程，毫秒级等待测试结果。 |
@@ -163,4 +159,4 @@ LOG_LEVEL=INFO
 系统内置了 **Ops 吹哨人 (Watchdog)** 模块：
 *   **持续监控**：每 30 秒扫描一次数据库。
 *   **死锁判定**：如果一个测试任务超过 10 分钟无响应，自动判定为环境死锁。
-*   **自动派单**：系统会自动生成一条 `ops_task` 急救工单并投递给运维通道，请求 Ops Agent 介入修复。
+*   **自动派单**：系统会自动生成一个 `ops_task` 急救工单并投递给运维通道，请求 Ops Agent 介入修复。

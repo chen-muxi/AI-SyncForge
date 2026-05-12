@@ -17,6 +17,7 @@ FAIL_STATUSES = ("fail", "fail_by_ops_intervention")
 
 
 def _connect() -> sqlite3.Connection:
+    """创建数据库连接，启用 Row 模式。"""
     conn = sqlite3.connect(str(DB_PATH), timeout=10, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
