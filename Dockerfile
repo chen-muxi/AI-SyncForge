@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制项目代码
 COPY . .
 
+# 预先创建数据目录，防止 SQLite 因目录不存在而报错
+RUN mkdir -p /app/data
+
 # 暴露 MCP 端口（默认 8000）
 EXPOSE 8000
 

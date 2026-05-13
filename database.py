@@ -11,6 +11,9 @@ from pathlib import Path
 # 从环境变量获取数据库路径，默认为当前目录下的 task_queue.db
 DB_PATH = Path(os.getenv("DB_PATH", Path(__file__).parent / "task_queue.db"))
 
+# 确保数据库所在的目录存在，否则 SQLite 会报 "unable to open database file" 错误
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
 _write_lock = threading.Lock()
 
 FAIL_STATUSES = ("fail", "fail_by_ops_intervention")

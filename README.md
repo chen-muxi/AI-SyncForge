@@ -64,13 +64,24 @@ python server.py
 #### 2. Configure Agents
 Add the following to your MCP client configuration (e.g., `mcp_config.json`):
 
+**Cursor Configuration:**
 ```json
-"ai-syncforge-broker": {
+"local-sse-server": {
+  "url": "http://localhost:8080/"
+}
+```
+
+**Antigravity Configuration:**
+```json
+"local-sse-server": {
   "serverUrl": "http://localhost:8080/"
 }
 ```
 > [!IMPORTANT]
 > **Transport Mode**: Use `Streamable-HTTP`. The Broker automatically handles path resolution and session mapping for root-path connections.
+
+#### 3. Agent Prompts
+For detailed system prompts for each role (Dev, QA, Ops), please refer to [PROMPTS.md](PROMPTS.md).
 
 ---
 
@@ -111,14 +122,26 @@ docker-compose up -d --build
 
 #### 2. 配置 Agent 客户端
 在您的 MCP 客户端配置（如 `mcp_config.json`）中添加：
+
+**Cursor 配置格式：**
 ```json
-"ai-syncforge-broker": {
+"local-sse-server": {
+  "url": "http://localhost:8080/"
+}
+```
+
+**Antigravity 配置格式：**
+```json
+"local-sse-server": {
   "serverUrl": "http://localhost:8080/"
 }
 ```
 
 > [!TIP]
 > **模式说明**：本项目目前运行在 `Streamable-HTTP` 模式下，完美兼容 Antigravity 等各类插件。直接指向根路径 `http://localhost:8080/` 即可，无需额外后缀。
+
+#### 3. 角色提示词配置
+关于 Dev、QA、Ops 各角色的详细系统提示词（System Prompt）配置，请参考 [PROMPTS.md](PROMPTS.md)。
 
 ---
 
