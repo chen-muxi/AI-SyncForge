@@ -1,7 +1,8 @@
 """
-AI-SyncForge MCP Broker 服务
+AI-SyncForge MCP Broker 服务 (V2)
 基于 FastMCP 的 SSE 模式服务端，挂载 Dev/QA/Ops 协作工具。
 内置 Ops 吹哨人协程实现系统自愈。
+V2 新增：DAG 任务路由、意图蒸馏、QA 抗辩机制。
 """
 
 import asyncio
@@ -44,7 +45,7 @@ mcp = FastMCP(
 )
 
 
-# ─── Dev 工具 ─────────────────────────────────────────────────────────────────
+# ─── V1 Dev 工具 ──────────────────────────────────────────────────────────────
 
 
 @mcp.tool()
@@ -59,6 +60,51 @@ async def submit_and_wait(project: str, code: str, req: str) -> dict:
         req: 测试需求描述
     """
     return await mcp_tools.submit_and_wait(project, code, req)
+
+
+# ─── V2 Dev 工具 ──────────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def get_next_task(project: str, timeout: int = 60) -> dict:
+    """
+    [Dev] 获取下一个可用的 DAG 任务。
+    原子锁定一个依赖已满足的 pending 任务，状态变为 in_progress。
+    长轮询挂起等待，无可用任务时不立即返回，节省 Token。
+    返回任务详情 + 直接前置节点的摘要（上下文裁剪）。
+    Args:
+        project: 项目名称
+        timeout: 最大等待秒数（默认 60）
+    """
+    return await mcp_tools.get_next_task(project, timeout)
+
+
+@mcp.tool()
+async def mark_task_done(task_id: int, status: str, summary: str) -> dict:
+    """
+    [Dev] 标记 DAG 任务完成。
+    将 summary 写入 metadata 实现意图蒸馏。
+    成功时解锁下游节点（含 I/O 冷却期）。
+    失败时触发级联阻断 + 3次自动熔断升级。
+    支持 qa_rejection 状态发起 QA 抗辩。
+    Args:
+        task_id: 任务 ID
+        status: 完成状态 ('success' / 'fail' / 'qa_rejection')
+        summary: 任务摘要
+    """
+    return await mcp_tools.mark_task_done(task_id, status, summary)
+
+
+@mcp.tool()
+async def read_task_context(task_id: int) -> dict:
+    """
+    [Dev] 读取任务的完整上下文。
+    通过后端协议直接读取，绕过 IDE 前端字数限制。
+    当 metadata 超过 50KB 时自动降级为本地文件路径。
+    Args:
+        task_id: 任务 ID
+    """
+    return await mcp_tools.read_task_context(task_id)
 
 
 # ─── QA 工具 ──────────────────────────────────────────────────────────────────
@@ -115,6 +161,29 @@ async def manage_env(action: str, params: str, related_task_id: int | None = Non
         related_task_id: 关联的原始故障任务 ID（可选）
     """
     return await mcp_tools.manage_env(action, params, related_task_id)
+
+
+@mcp.tool()
+async def inspect_project_tree(project: str) -> dict:
+    """
+    [Ops/Dev] 查看项目的 DAG 状态树。
+    返回项目中所有任务的状态快照，用于可视化和调试。
+    Args:
+        project: 项目名称
+    """
+    return await mcp_tools.inspect_project_tree(project)
+
+
+@mcp.tool()
+async def reset_task_branch(task_id: int) -> dict:
+    """
+    [Ops] 重置卡死分支。
+    将指定任务及其所有下游任务重置为 pending 状态。
+    用于死锁解除和灾难恢复。
+    Args:
+        task_id: 需要重置的任务 ID
+    """
+    return await mcp_tools.reset_task_branch(task_id)
 
 
 # ─── 服务启动 ─────────────────────────────────────────────────────────────────
